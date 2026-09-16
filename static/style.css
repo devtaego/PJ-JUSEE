@@ -1,0 +1,32 @@
+body {
+    text-align: center;
+    margin-top: 100px;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    font-size: 50px;
+}
+
+button {
+    padding: 12px 30px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+select {
+    padding: 10px 30px;
+    font-size: 16px;
+}
+
+.game-info {
+    margin: 30px;
+    font-size: 18px;
+}
+
+.stock {
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin: 20px auto;
+    width: 400px;
+}

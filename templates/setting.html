@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>게임 설정</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <h1>게임 설정</h1>
+
+    <form action="/start" method="POST">
+
+        <h2>투자 기간</h2>
+
+        <select name="days">
+            {% for day in range(10, 31) %}
+                <option value="{{ day }}">{{ day }}일</option>
+            {% endfor %}
+        </select>
+
+
+        <h2>가격 변동 주기</h2>
+
+        <select name="cycle">
+            <option value="1">1일</option>
+            <option value="2">2일</option>
+            <option value="3">3일</option>
+        </select>
+
+
+        <h2>시장 변동성</h2>
+
+        <select name="volatility">
+            <option value="low">낮음</option>
+            <option value="normal" selected>보통</option>
+            <option value="high">높음</option>
+        </select>
+
+        <br><br>
+
+        <button type="submit">게임 시작</button>
+
+    </form>
+
+</body>
+</html>
