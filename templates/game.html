@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Game</title>
+    <style>
+        :root {
+            --ink: #17221d;
+            --muted: #6b776f;
+            --line: #dce5df;
+            --paper: #f4f7f3;
+            --panel: #ffffff;
+            --green: #176b4d;
+            --green-soft: #e4f1e9;
+            --red: #b5413b;
+            --shadow: 0 16px 40px rgba(30, 56, 42, 0.08);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: Georgia, "Times New Roman", serif;
+        }
+        button, input { font: inherit; }
+        button { cursor: pointer; }
+        .shell { width: min(1180px, calc(100% - 32px)); margin: 28px auto 56px; }
+        .masthead, .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+        .masthead {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: end;
+            padding: 28px 32px;
+            border-radius: 18px 18px 6px 6px;
+        }
+        .eyebrow { margin: 0 0 8px; color: var(--green); font: 700 12px Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+        h1 { margin: 0; font-size: clamp(30px, 5vw, 54px); line-height: .95; }
+        .meta { display: flex; gap: 24px; text-align: right; }
+        .meta strong { display: block; font-size: 20px; }
+        .meta span, .label { color: var(--muted); font: 12px Arial, sans-serif; }
+        .layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(290px, .75fr); gap: 18px; margin-top: 18px; }
+        .panel { border-radius: 6px; padding: 24px; }
+        .panel h2 { margin: 0 0 18px; font-size: 23px; }
+        .news { grid-column: 1 / -1; background: #edf5ee; }
+        .news-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+        .news-card { padding: 16px; background: rgba(255,255,255,.72); border-left: 3px solid var(--green); }
+        .news-card.big { border-left-color: var(--red); }
+        .news-card h3 { margin: 6px 0 8px; font-size: 18px; }
+        .news-card p { margin: 0; color: #47554d; line-height: 1.45; }
+        .news-type { color: var(--green); font: 700 11px Arial, sans-serif; }
+        .news-card.big .news-type { color: var(--red); }
+        .stock-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .stock-card { width: 100%; padding: 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; text-align: left; transition: border-color .15s, background .15s, transform .15s; }
+        .stock-card:hover { border-color: var(--green); transform: translateY(-2px); }
+        .stock-card.selected-stock { border-color: var(--green); background: var(--green-soft); box-shadow: inset 0 0 0 1px var(--green); }
+        .stock-card-top, .stock-card-bottom { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+        .stock-card-bottom { margin-top: 18px; font: 13px Arial, sans-serif; }
+        .stock-name { font-weight: 700; }
+        .stock-price { font-size: 20px; font-weight: 700; white-space: nowrap; }
+        .ticker { display: block; margin-top: 3px; color: var(--muted); font: 11px Arial, sans-serif; }
+        .up { color: var(--green); }
+        .down { color: var(--red); }
+        .trade-panel { align-self: start; }
+        .selected { margin: 0 0 18px; padding: 16px; background: var(--green-soft); }
+        .selected strong { display: block; margin-top: 5px; font-size: 22px; }
+        .quantity-control { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; margin-bottom: 10px; }
+        .quantity-control button, .quantity-control input { min-height: 44px; border: 1px solid var(--line); border-radius: 5px; text-align: center; }
+        .quantity-control button { color: var(--ink); background: #f4f8f4; font-size: 22px; }
+        .quantity-control input { width: 100%; color: var(--ink); background: #fff; font-weight: 700; }
+        .quick-quantity { display: flex; gap: 7px; margin-bottom: 14px; }
+        .quick-quantity button { flex: 1; padding: 8px 4px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: #fff; font: 12px Arial, sans-serif; }
+        .quick-quantity button:hover { border-color: var(--green); color: var(--green); }
+        .trade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .trade-row button { padding: 13px; border: 0; border-radius: 5px; color: white; background: var(--green); font-weight: 700; }
+        .trade-row button:last-child { background: var(--red); }
+        .hint { margin: 12px 0 0; color: var(--muted); font: 12px Arial, sans-serif; }
+        .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; grid-column: 1 / -1; }
+        .summary .panel { padding: 18px 20px; }
+        .amount { display: block; margin-top: 7px; font-size: 23px; }
+        #message { min-height: 18px; margin: 14px 0 0; font: 13px Arial, sans-serif; }
+        .error { color: var(--red); }
+        @media (max-width: 780px) {
+            .masthead { display: block; }
+            .meta { margin-top: 22px; text-align: left; }
+            .layout { grid-template-columns: 1fr; }
+            .summary { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 500px) {
+            .shell { width: min(100% - 20px, 1180px); margin-top: 10px; }
+            .masthead, .panel { padding: 20px 16px; }
+            .stock-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header class="masthead">
+        <div>
+            <p class="eyebrow">JUSEE / Investment Game</p>
+            <h1 id="player-name">게임을 불러오는 중</h1>
+        </div>
+        <div class="meta">
+            <div><span>MARKET DAY</span><strong id="current-day">-</strong></div>
+            <div><span>GAME LENGTH</span><strong id="game-days">-</strong></div>
+            <div><span>TIME LEFT</span><strong id="remaining-time">--:--:--</strong></div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <section class="panel news">
+            <h2>오늘의 뉴스</h2>
+            <div id="news-list" class="news-list"><p>뉴스를 불러오는 중입니다.</p></div>
+        </section>
+
+        <section class="panel">
+            <h2>시장 <span class="hint">종목을 선택하세요</span></h2>
+            <div id="stock-list" class="stock-grid"></div>
+        </section>
+
+        <section class="panel trade-panel">
+            <h2>거래</h2>
+            <div class="selected">선택 종목<strong id="selected-stock">종목을 선택하세요</strong></div>
+            <div class="quantity-control">
+                <button type="button" id="decrease-quantity" aria-label="수량 줄이기">−</button>
+                <input id="quantity" type="number" min="1" step="1" value="1" aria-label="거래 수량">
+                <button type="button" id="increase-quantity" aria-label="수량 늘리기">+</button>
+            </div>
+            <div class="quick-quantity" aria-label="빠른 수량 선택">
+                <button type="button" data-quantity="1">1주</button>
+                <button type="button" data-quantity="10">10주</button>
+                <button type="button" id="max-buy">최대</button>
+            </div>
+
+            <div class="trade-row">
+                <button type="button" data-side="BUY">매수</button>
+                <button type="button" data-side="SELL">매도</button>
+            </div>
+            <p id="message" role="status"></p>
+            <p class="hint">시장가로 현재 시장일의 가격에 거래됩니다.</p>
+        </section>
+
+        <section class="summary">
+            <div class="panel"><span class="label">보유 현금</span><strong class="amount" id="cash">-</strong></div>
+            <div class="panel"><span class="label">주식 평가액</span><strong class="amount" id="portfolio-value">-</strong></div>
+            <div class="panel"><span class="label">총자산</span><strong class="amount" id="total-assets">-</strong></div>
+        </section>
+    </div>
+</main>
+<script>
+    let state = null;
+    let selectedStockId = null;
+    let remainingSeconds = 0;
+    let currentSide = "BUY";
+
+    const money = value => `${Math.round(value).toLocaleString("ko-KR")}원`;
+    const rate = value => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+    const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+    })[character]);
+    const clock = seconds => {
+        const safeSeconds = Math.max(0, Math.floor(seconds));
+        const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, "0");
+        const minutes = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, "0");
+        const rest = String(safeSeconds % 60).padStart(2, "0");
+        return `${hours}:${minutes}:${rest}`;
+    };
+
+    function renderRemainingTime() {
+        const element = document.getElementById("remaining-time");
+        element.textContent = clock(remainingSeconds);
+        element.style.color = remainingSeconds <= 60 ? "#b5413b" : "";
+    }
+
+    function render() {
+        const { game, player, stocks, events } = state;
+        document.getElementById("player-name").textContent = player.player_name;
+        document.getElementById("current-day").textContent = `DAY ${game.current_day}`;
+        document.getElementById("game-days").textContent = `${game.game_days}일`;
+        remainingSeconds = game.day_remaining_seconds || 0;
+        renderRemainingTime();
+        document.getElementById("cash").textContent = money(player.cash);
+
+        const stockList = document.getElementById("stock-list");
+        stockList.innerHTML = stocks.length ? stocks.map(stock => `
+            <button class="stock-card ${stock.stock_id === selectedStockId ? "selected-stock" : ""}" data-stock-id="${stock.stock_id}" type="button">
+                <span class="stock-card-top"><span><span class="stock-name">${escapeHtml(stock.stock_name)}</span><span class="ticker">${escapeHtml(stock.ticker)}</span></span><span class="stock-price">${money(stock.price)}</span></span>
+                <span class="stock-card-bottom"><span class="${stock.change_rate >= 0 ? "up" : "down"}">${rate(stock.change_rate)}</span><span>보유 ${stock.quantity.toLocaleString("ko-KR")}주</span></span>
+            </button>`).join("") : `<p>등록된 종목이 없습니다.</p>`;
+
+        const portfolioValue = stocks.reduce((total, stock) => total + stock.price * stock.quantity, 0);
+        document.getElementById("portfolio-value").textContent = money(portfolioValue);
+        document.getElementById("total-assets").textContent = money(player.cash + portfolioValue);
+
+        const newsList = document.getElementById("news-list");
+        newsList.innerHTML = events.length ? events.map(event => `
+            <article class="news-card ${event.event_type === "BIG" ? "big" : ""}">
+                <span class="news-type">${event.event_type === "BIG" ? "BIG EVENT" : "MARKET NEWS"}</span>
+                <h3>${escapeHtml(event.title)}</h3><p>${escapeHtml(event.content)}</p>
+            </article>`).join("") : "<p>오늘 공개된 뉴스가 없습니다.</p>";
+
+        if (!selectedStockId && stocks.length) selectStock(stocks[0].stock_id);
+    }
+
+    function selectStock(stockId) {
+        selectedStockId = Number(stockId);
+        const stock = state.stocks.find(item => item.stock_id === selectedStockId);
+        if (stock) document.getElementById("selected-stock").textContent = `${stock.stock_name} · ${money(stock.price)}`;
+        document.querySelectorAll("#stock-list [data-stock-id]").forEach(card => card.classList.toggle("selected-stock", Number(card.dataset.stockId) === selectedStockId));
+    }
+
+    async function loadState() {
+        const response = await fetch("{{ url_for('game_state') }}");
+        const data = await response.json();
+        if (response.status === 409 && data.status === "FINISHED") {
+            window.location.href = "{{ url_for('waiting') }}";
+            return;
+        }
+        if (response.status === 401 || response.status === 404) {
+            window.location.href = "{{ url_for('index') }}";
+            return;
+        }
+        if (!response.ok) throw new Error(data.error || "게임 정보를 불러오지 못했습니다.");
+        state = data;
+        render();
+    }
+
+    async function trade(side) {
+        const quantity = Number(document.getElementById("quantity").value);
+        const message = document.getElementById("message");
+        if (!selectedStockId || !Number.isInteger(quantity) || quantity <= 0) {
+            message.textContent = "종목과 올바른 수량을 입력해주세요.";
+            message.className = "error";
+            return;
+        }
+        const response = await fetch("{{ url_for('trade') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stock_id: selectedStockId, quantity, side })
+        });
+        const data = await response.json();
+        message.textContent = response.ok ? data.message : data.error;
+        message.className = response.ok ? "" : "error";
+        if (response.ok) await loadState();
+    }
+
+    document.getElementById("stock-list").addEventListener("click", event => {
+        const card = event.target.closest("[data-stock-id]");
+        if (card) selectStock(card.dataset.stockId);
+    });
+    const quantityInput = document.getElementById("quantity");
+    document.getElementById("decrease-quantity").addEventListener("click", () => {
+        quantityInput.value = Math.max(1, Number(quantityInput.value || 1) - 1);
+    });
+    document.getElementById("increase-quantity").addEventListener("click", () => {
+        quantityInput.value = Math.max(1, Number(quantityInput.value || 1) + 1);
+    });
+    document.querySelectorAll("[data-quantity]").forEach(button => button.addEventListener("click", () => {
+        quantityInput.value = button.dataset.quantity;
+    }));
+    document.querySelectorAll("[data-side]").forEach(button => {
+        button.addEventListener("click", () => {
+            currentSide = button.dataset.side;
+            trade(currentSide);
+        });
+    });
+
+    document.getElementById("max-buy").addEventListener("click", () => {
+        if (!selectedStockId || !state) return;
+
+        const stock = state.stocks.find(
+            item => item.stock_id === selectedStockId
+        );
+
+        if (!stock) return;
+
+        let maxQuantity;
+
+        if (currentSide === "BUY") {
+            maxQuantity = Math.floor(state.player.cash / stock.price);
+        } else {
+            maxQuantity = stock.quantity;
+        }
+
+        quantityInput.value = maxQuantity;
+    });
+
+
+    loadState().catch(error => {
+        document.getElementById("message").textContent = error.message;
+        document.getElementById("message").className = "error";
+    });
+    // setInterval(() => loadState().catch(() => {}), 15000);
+    setInterval(() => loadState().catch(() => {}), 3000);
+
+    setInterval(() => {
+        if (remainingSeconds > 0) {
+            remainingSeconds -= 1;
+        }
+
+        renderRemainingTime();
+
+        // DAY 시간이 0이 되는 순간 서버 상태 확인
+        if (remainingSeconds === 0) {
+            loadState().catch(() => {});
+        }
+    }, 1000);
+</script>
+</body>
+</html>

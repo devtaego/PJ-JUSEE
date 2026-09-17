@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+    <title>관제센터 | JUSEE</title>
+    <style>
+        .control-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr); gap: 18px; }
+        .control-panel { padding: 24px; }
+        .control-panel h2 { margin: 0 0 18px; }
+        .live-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+        .live-pill { padding: 8px 11px; border-radius: 999px; color: var(--green); background: var(--green-soft); font: 700 12px Arial, sans-serif; }
+        .live-pill.muted { color: var(--muted); background: #f1f4f1; }
+        .market-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .market-card { padding: 15px; border: 1px solid var(--line); border-radius: 8px; background: #fbfdfb; }
+        .market-card-top, .market-card-bottom { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+        .market-card-bottom { margin-top: 14px; color: var(--muted); font: 12px Arial, sans-serif; }
+        .market-price { font-size: 19px; font-weight: 700; }
+        .chart-wrap { overflow-x: auto; padding: 8px 0 0; }
+        #price-chart { display: block; width: 100%; min-width: 520px; height: 270px; }
+        .chart-grid { stroke: #e5ece6; stroke-width: 1; }
+        .chart-label { fill: #849087; font: 11px Arial, sans-serif; }
+        .chart-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font: 12px Arial, sans-serif; color: var(--muted); }
+        .legend span::before { content: ""; display: inline-block; width: 18px; height: 3px; margin: 0 6px 3px 0; background: var(--legend-color); }
+        .rank-list, .trade-list { display: grid; gap: 8px; padding: 0; list-style: none; margin: 0; }
+        .rank-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 12px; border-radius: 7px; background: #f7faf7; font: 13px Arial, sans-serif; }
+        .rank-number { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: white; background: var(--green); font-weight: 700; }
+        .rank-row:nth-child(2) .rank-number { background: #6c8175; }
+        .rank-row:nth-child(3) .rank-number { background: #a27b4c; }
+        .rank-name { font-weight: 700; }
+        .rank-sub { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+        .rank-assets { font-weight: 700; text-align: right; }
+        .trade-row-admin { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font: 13px Arial, sans-serif; }
+        .trade-row-admin:last-child { border-bottom: 0; }
+        .trade-meta { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+        .buy { color: var(--green); font-weight: 700; }
+        .sell { color: var(--red); font-weight: 700; }
+        .empty-state { color: var(--muted); font: 13px Arial, sans-serif; }
+        @media (max-width: 820px) { .control-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 500px) { .market-grid { grid-template-columns: 1fr; } .control-panel { padding: 18px 15px; } }
+    </style>
+</head>
+<body class="site-page">
+<main class="wide-shell" data-game-id="{{ game.game_id }}">
+    <header class="admin-header">
+        <div>
+            <p class="brand-mark">JUSEE / Control Room</p>
+            <h1>시장 관제센터</h1>
+        </div>
+        <p class="lede">실시간으로 시장과 플레이어의 움직임을 확인합니다.</p>
+    </header>
+
+    <section class="surface control-panel" style="margin-bottom: 18px;">
+        <div class="live-strip">
+            <span class="live-pill" id="live-status">● 연결 중</span>
+            <span class="live-pill muted" id="game-label">게임 불러오는 중</span>
+            <span class="live-pill muted" id="day-label">DAY -</span>
+            <span class="live-pill muted" id="time-label">남은 시간 --:--</span>
+        </div>
+        <div class="game-summary">
+            <div class="summary-box"><span>게임 상태</span><strong id="status-value">-</strong></div>
+            <div class="summary-box"><span>게임 기간</span><strong id="length-value">-</strong></div>
+            <div class="summary-box"><span>가격 변동</span><strong>{{ tick_seconds }}초</strong></div>
+            <div class="summary-box"><span>참가자</span><strong id="player-count">-</strong></div>
+        </div>
+            <form id="start-form" action="{{ url_for('start_game', game_id=game.game_id) }}" method="POST" {% if game.status != "OPEN" %}hidden{% endif %}>
+                <button class="primary-button" type="submit">게임 시작</button>
+            </form>
+            <p id="playing-status" class="waiting-status" {% if game.status != "PLAYING" %}hidden{% endif %}>게임 진행 중 · 플레이어 화면이 자동으로 갱신됩니다.</p>
+            <form id="restart-form" action="{{ url_for('restart_game') }}" method="POST" {% if game.status != "FINISHED" %}hidden{% endif %} onsubmit="return confirm('다시 시작하면 참가자와 거래 기록이 모두 삭제되고 새 게임이 열립니다. 계속할까요?');">
+                <p class="waiting-status">게임이 종료되었습니다. 다시 시작하면 데이터베이스를 초기화하고 새 참가자를 받을 수 있습니다.</p>
+                <button class="primary-button" type="submit">다시 시작</button>
+            </form>
+    </section>
+
+    <div class="control-grid">
+        <div style="display: grid; gap: 18px; align-content: start;">
+            <section class="surface control-panel">
+                <p class="eyebrow">Live market</p>
+                <h2>현재 시장</h2>
+                <div id="market-grid" class="market-grid"></div>
+            </section>
+            <section class="surface control-panel">
+                <p class="eyebrow">Price movement</p>
+                <h2>주가 흐름</h2>
+                <div class="chart-wrap"><svg id="price-chart" viewBox="0 0 760 270" role="img" aria-label="종목별 주가 흐름"></svg></div>
+                <div id="legend" class="legend"></div>
+            </section>
+        </div>
+
+        <div style="display: grid; gap: 18px; align-content: start;">
+            <section class="surface control-panel">
+                <p class="eyebrow">Leaderboard</p>
+                <h2 id="rank-title">TOP 플레이어</h2>
+                <ol id="rank-list" class="rank-list"></ol>
+            </section>
+            <section class="surface control-panel">
+                <p class="eyebrow">Order flow</p>
+                <h2 id="trade-title">최근 거래</h2>
+                <div id="trade-list" class="trade-list"></div>
+            </section>
+            <aside class="surface control-panel">
+                <p class="eyebrow">Single session</p>
+                <h2>이번 게임</h2>
+                <p class="lede">초대코드 <strong>{{ game.invite_code }}</strong>로 참가한 플레이어들이 이 게임을 한 번 진행합니다.</p>
+                <div class="fact" style="margin-top: 20px;"><span>가격 변동 주기</span><strong>{{ tick_seconds }}초</strong></div>
+                <div class="fact" style="margin-top: 10px;"><span>게임 기간</span><strong>{{ game.game_days }}일</strong></div>
+            </aside>
+        </div>
+    </div>
+</main>
+<script>
+    const gameId = document.querySelector("main").dataset.gameId;
+    const colors = ["#176b4d", "#b5413b", "#3d6d9b", "#a27b4c", "#825a91"];
+    const money = value => `${Math.round(value).toLocaleString("ko-KR")}원`;
+    const clock = seconds => {
+        const value = Math.max(0, Math.floor(seconds || 0));
+        return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    };
+    const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+
+    function drawChart(series) {
+        const svg = document.getElementById("price-chart");
+        const legend = document.getElementById("legend");
+        svg.innerHTML = "";
+        legend.innerHTML = "";
+        const allPoints = series.flatMap(item => item.points);
+        if (!allPoints.length) { svg.innerHTML = '<text x="30" y="135" class="chart-label">가격 데이터가 아직 없습니다.</text>'; return; }
+        const width = 760, height = 270, left = 42, right = 16, top = 20, bottom = 32;
+        const values = allPoints.map(point => point.price);
+        const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+        const days = [...new Set(allPoints.map(point => point.day))].sort((a, b) => a - b);
+        const x = day => left + (days.length === 1 ? 0 : (day - days[0]) / (days[days.length - 1] - days[0])) * (width - left - right);
+        const y = value => top + (1 - (value - min) / range) * (height - top - bottom);
+        [0, .5, 1].forEach(step => { const lineY = top + step * (height - top - bottom); svg.insertAdjacentHTML("beforeend", `<line x1="${left}" y1="${lineY}" x2="${width - right}" y2="${lineY}" class="chart-grid"/><text x="4" y="${lineY + 4}" class="chart-label">${money(max - step * range)}</text>`); });
+        days.forEach(day => svg.insertAdjacentHTML("beforeend", `<text x="${x(day)}" y="${height - 8}" text-anchor="middle" class="chart-label">DAY ${day}</text>`));
+        series.forEach((item, index) => {
+            const color = colors[index % colors.length];
+            const path = item.points.map((point, pointIndex) => `${pointIndex ? "L" : "M"}${x(point.day)} ${y(point.price)}`).join(" ");
+            svg.insertAdjacentHTML("beforeend", `<path d="${path}" class="chart-line" stroke="${color}"/>`);
+            legend.insertAdjacentHTML("beforeend", `<span style="--legend-color:${color}">${escapeHtml(item.name)}</span>`);
+        });
+    }
+
+    function render(data) {
+        const game = data.game;
+        document.getElementById("live-status").textContent = "● LIVE";
+        document.getElementById("game-label").textContent = `${game.invite_code} · #${game.game_id}`;
+        document.getElementById("day-label").textContent = `DAY ${game.current_day} / ${game.game_days}`;
+        document.getElementById("time-label").textContent = `남은 시간 ${clock(game.remaining_seconds)}`;
+        document.getElementById("status-value").textContent = game.status;
+        const startForm = document.getElementById("start-form");
+        const playingStatus = document.getElementById("playing-status");
+        const restartForm = document.getElementById("restart-form");
+        if (startForm) startForm.hidden = game.status !== "OPEN";
+        if (playingStatus) playingStatus.hidden = game.status !== "PLAYING";
+        if (restartForm) restartForm.hidden = game.status !== "FINISHED";
+        document.getElementById("length-value").textContent = `${game.game_days}일`;
+        document.getElementById("player-count").textContent = `${data.rankings.length}명`;
+        document.getElementById("market-grid").innerHTML = data.market.map(stock => `<article class="market-card"><div class="market-card-top"><strong>${escapeHtml(stock.stock_name)}</strong><span class="market-price">${money(stock.price)}</span></div><div class="market-card-bottom"><span>${escapeHtml(stock.ticker)}</span><span class="${stock.change_rate >= 0 ? "up" : "down"}">${stock.change_rate >= 0 ? "+" : ""}${stock.change_rate.toFixed(2)}%</span></div></article>`).join("") || '<p class="empty-state">종목 데이터가 없습니다.</p>';
+        const rankTitle = document.getElementById("rank-title");
+        const tradeTitle = document.getElementById("trade-title");
+        if (game.status === "OPEN") {
+            rankTitle.textContent = "대기 중인 참가자";
+            tradeTitle.textContent = "거래 대기 중";
+            document.getElementById("rank-list").innerHTML = data.rankings.map((player, index) => `<li class="rank-row"><span class="rank-number">${index + 1}</span><span><span class="rank-name">${escapeHtml(player.player_name)}</span><span class="rank-sub">참가 완료 · 게임 시작 대기</span></span><span class="rank-assets">대기 중</span></li>`).join("") || '<li class="empty-state">아직 참가자가 없습니다.</li>';
+            document.getElementById("trade-list").innerHTML = '<p class="empty-state">게임 시작 후 거래 내역이 표시됩니다.</p>';
+        } else {
+            rankTitle.textContent = "TOP 플레이어";
+            tradeTitle.textContent = "최근 거래";
+            document.getElementById("rank-list").innerHTML = data.rankings.slice(0, 5).map((player, index) => `<li class="rank-row"><span class="rank-number">${index + 1}</span><span><span class="rank-name">${escapeHtml(player.player_name)}</span><span class="rank-sub">현금 ${money(player.cash)} · 주식 ${money(player.portfolio_value)}</span></span><span class="rank-assets">${money(player.total_assets)}</span></li>`).join("") || '<li class="empty-state">아직 참가자가 없습니다.</li>';
+            document.getElementById("trade-list").innerHTML = data.recent_trades.map(trade => `<div class="trade-row-admin"><span><strong>${escapeHtml(trade.player_name)}</strong> · ${escapeHtml(trade.stock_name)} <span class="trade-meta">${trade.quantity}주 · ${money(trade.total_amount)}</span></span><span class="${trade.side === "BUY" ? "buy" : "sell"}">${trade.side === "BUY" ? "매수" : "매도"}</span></div>`).join("") || '<p class="empty-state">아직 거래가 없습니다.</p>';
+        }
+        drawChart(data.chart);
+    }
+
+    async function loadAdminState() {
+        const response = await fetch(`{{ url_for('admin_state') }}?game_id=${gameId}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "관제 데이터를 불러오지 못했습니다.");
+        render(data);
+    }
+
+    async function loadPresence() {
+        const response = await fetch(`{{ url_for('admin_presence') }}?game_id=${gameId}`);
+        const data = await response.json();
+        if (!response.ok) return;
+        document.getElementById("player-count").textContent = `${data.players.length}명`;
+        if (data.status !== "OPEN") return;
+        document.getElementById("rank-title").textContent = "대기 중인 참가자";
+        document.getElementById("rank-list").innerHTML = data.players.map((player, index) => `<li class="rank-row"><span class="rank-number">${index + 1}</span><span><span class="rank-name">${escapeHtml(player.player_name)}</span><span class="rank-sub">참가 완료 · 게임 시작 대기</span></span><span class="rank-assets">대기 중</span></li>`).join("") || '<li class="empty-state">아직 참가자가 없습니다.</li>';
+    }
+
+    loadAdminState().catch(error => { document.getElementById("live-status").textContent = error.message; });
+    loadPresence().catch(() => {});
+    setInterval(() => loadAdminState().catch(() => {}), 5000);
+    setInterval(() => loadPresence().catch(() => {}), 1000);
+</script>
+</body>
+</html>

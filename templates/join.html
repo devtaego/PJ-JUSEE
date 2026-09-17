@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+    <title>게임 참가 | JUSEE</title>
+</head>
+<body class="site-page">
+<main class="narrow-shell">
+    <p class="brand-mark">JUSEE / Game Lobby</p>
+    <section class="surface hero-card">
+        <p class="eyebrow">You are invited</p>
+        <h1>게임에<br>참가하세요.</h1>
+        {% if rejoin %}
+        <p class="lede">게임이 이미 시작되었습니다. 처음 참가할 때 사용한 이름을 입력하면 다시 입장할 수 있습니다. 새로운 참가는 할 수 없습니다.</p>
+        {% else %}
+        <p class="lede">게임 이름을 정하고 대기실에서 시작 신호를 기다립니다. 게임이 시작되면 이번 게임은 기존 참가자만 다시 입장할 수 있습니다.</p>
+        {% endif %}
+        <div class="game-facts">
+            <div class="fact"><span>게임 기간</span><strong>{{ game.game_days }}일</strong></div>
+            <div class="fact"><span>가격 변동 주기</span><strong>{{ tick_seconds }}초</strong></div>
+        </div>
+        <form class="entry-form" action="{{ url_for('join_game') }}" method="POST">
+            <input type="hidden" name="game_id" value="{{ game.game_id }}">
+            <label class="field-label" for="player-name">플레이어 이름</label>
+            <input class="input" id="player-name" name="player_name" type="text" placeholder="게임에서 사용할 이름" maxlength="30" autocomplete="nickname" required autofocus>
+            <button class="primary-button" type="submit">{% if rejoin %}기존 이름으로 재입장{% else %}참가하고 대기실로{% endif %}</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

@@ -2,18 +2,24 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>JUSEE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+    <title>JUSEE | Stock Simulator</title>
 </head>
-
-<body>
-
-    <h1>JUSEE</h1>
-    <p>주식 투자 시뮬레이션</p>
-
-    <a href="/setting">
-        <button>게임 시작</button>
-    </a>
-
+<body class="site-page">
+<main class="narrow-shell">
+    <p class="brand-mark">JUSEE / Stock Simulator</p>
+    <section class="surface hero-card">
+        <p class="eyebrow">A market made for decisions</p>
+        <h1>오늘의 시장에<br>입장하세요.</h1>
+        <p class="lede">초대코드를 입력하면 게임 설정을 확인하고 투자 라운드에 참가할 수 있습니다.</p>
+        <form class="entry-form" action="{{ url_for('enter') }}" method="POST">
+            <label class="field-label" for="invite-code">초대코드</label>
+            <input class="input" id="invite-code" name="invite_code" type="text" placeholder="예: KDA5" maxlength="20" autocomplete="off" required autofocus>
+            <button class="primary-button" type="submit">게임 입장</button>
+        </form>
+        <a class="inline-link" href="{{ url_for('admin_login') }}">관리자 로그인</a>
+    </section>
+</main>
 </body>
 </html>

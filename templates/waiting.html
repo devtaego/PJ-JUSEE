@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>게임 대기실</title>
+</head>
+
+<body>
+
+<h1>게임 대기실</h1>
+
+<p id="status-copy">게임이 시작되기를 기다리고 있습니다.</p>
+
+<h2 id="status">
+    대기 중...
+</h2>
+
+<script>
+
+    async function checkGame() {
+        try {
+            const response = await fetch("{{ url_for('waiting_status') }}");
+            const data = await response.json();
+
+            if (!response.ok || data.status === "ERROR") {
+                document.getElementById("status").textContent = "게임이 초기화되어 다시 입장해야 합니다.";
+                window.location.href = "{{ url_for('index') }}";
+                return;
+            }
+
+            if (data.status === "PLAYING") {
+                document.getElementById("status").textContent = "게임이 시작되었습니다.";
+                window.location.href = "{{ url_for('game') }}";
+                return;
+            }
+
+            if (data.status === "FINISHED") {
+                document.getElementById("status-copy").textContent = "게임이 종료되었습니다. 관리자가 다시 시작하면 새로운 게임에 참가할 수 있습니다.";
+                document.getElementById("status").textContent = "게임 종료";
+                return;
+            }
+
+            document.getElementById("status-copy").textContent = "게임이 시작되기를 기다리고 있습니다.";
+            document.getElementById("status").textContent = "대기 중...";
+        } catch (error) {
+            document.getElementById("status").textContent = "연결을 확인하고 있습니다...";
+        }
+    }
+
+    checkGame();
+    setInterval(checkGame, 2000);
+
+</script>
+
+</body>
+</html>
